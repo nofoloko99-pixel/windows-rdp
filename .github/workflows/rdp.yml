@@ -1,0 +1,29 @@
+name: Windows RDP
+on: workflow_dispatch
+permissions:
+  actions: write
+jobs:
+  rdp:
+    runs-on: windows-latest
+    timeout-minutes: 360
+    steps:
+      - name: Activar RDP
+        shell: pwsh
+        run: |
+          Set-ItemProperty 'HKLM:\System\CurrentControlSet\Control\Terminal Server' fDenyTSConnections 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Set-LocalUser -Name runneradmin -Password (ConvertTo-SecureString "${{ secrets.RDP_PASSWORD }}" -AsPlainText -Force)
+      - name: Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          hostname: gh-windows
+      - name: Mantener activa y relanzar
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tailscale ip -4
+          Start-Sleep -Seconds 19800
+          gh workflow run rdp.yml --repo ${{ github.repository }}
+          Start-Sleep -Seconds 1500
